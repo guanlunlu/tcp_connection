@@ -71,6 +71,8 @@ class tcp_server:
 
     def allyPublish(self, ally_pose):
         msg = PoseWithCovarianceStamped()
+        msg.header.stamp = rospy.Time.now()
+        msg.header.frame_id = 'map'
         msg.pose.pose.position.x = ally_pose[0]
         msg.pose.pose.position.y = ally_pose[1]
         quaternion = quaternion_from_euler(0, 0, ally_pose[2])
