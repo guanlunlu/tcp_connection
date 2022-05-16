@@ -30,22 +30,28 @@ class tcp_server:
         s.bind((self.HOST, self.PORT))
         s.listen(5)
 
-        print('server start at: %s:%s' % (self.HOST, self.PORT))
-        print('wait for connection...')
+        # print('server start at: %s:%s' % (self.HOST, self.PORT))
+        # print('wait for connection...')
+        rospy.loginfo("server start at: %s:%s", self.HOST, self.PORT)
+        rospy.loginfo("wait for connection ...")
 
         while True and not rospy.is_shutdown():
-            conn, addr = s.accept()
-            rospy.loginfo('connected by ' + str(addr))
+            try:
+                conn, addr = s.accept()
+                rospy.loginfo('connected by ' + str(addr))
+                self.stateReset()
+            except KeyboardInterrupt:
+                pass
 
             while True and not rospy.is_shutdown():
                 # receive ally's current pose
                 indata = conn.recv(1024)
                 if len(indata) == 0: # connection closed
                     conn.close()
-                    rospy.loginfo('client closed connection.')
+                    rospy.logerr_throttle(0.1, 'Lost connection from Client')
                     break
                 recv_data = indata.decode()
-                print('recv: ' + recv_data)
+                rospy.loginfo_throttle(0.1,'[Tera] recv: ' + recv_data)
                 recv_data = json.loads(recv_data)
                 self.allyPublish(recv_data)
                 self.triggerAlly(recv_data)
@@ -55,9 +61,13 @@ class tcp_server:
                 send_data = self.robot_pose.copy()
                 send_data.append(self.score)
                 send_data = str(send_data)
-                print('send: ' + send_data)
-                print("---")
+                rospy.loginfo_throttle(0.1,'[Tera] send: ' + send_data)
+                rospy.loginfo_throttle(0.1,"---")
+
                 conn.send(send_data.encode())
+
+    def stateReset(self):
+        self.if_tera_started = False
 
     def poseCallback(self, data):
         x = data.pose.pose.position.x
@@ -84,13 +94,18 @@ class tcp_server:
 
     def triggerAlly(self, data):
         if data[3] == 1 and self.if_tera_started == False:
-            rospy.ServiceProxy("Tera_startRunning", Empty)
+            rospy.wait_for_service('Tera_startRunning')
+            try:
+                srv = rospy.ServiceProxy("Tera_startRunning", Empty)
+                srv()
+            except rospy.ServiceException as e:
+                print("Service call failed: %s"%e)
             self.if_tera_started = True
         else:
             pass
 
 if __name__ == "__main__":
-    rospy.init_node("tcp_server", anonymous = True)
+    rospy.init_node("tcp_server", anonymous = True, disable_signals=True)
 
     tcp_server()
 

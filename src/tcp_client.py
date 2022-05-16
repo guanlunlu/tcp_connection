@@ -15,7 +15,7 @@ class tcp_client:
         self.PORT = 7001
 
         self.robot_pose = [0,0,0]
-        self.start_running = 1
+        self.start_running = 0
         self.pose_sub = rospy.Subscriber("ekf_pose", PoseWithCovarianceStamped, self.poseCallback)
         self.start_sub = rospy.Subscriber("start_running", Int32, self.startCallback)
 
@@ -24,30 +24,45 @@ class tcp_client:
         self.clientInitialize()
 
     def clientInitialize(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((self.HOST, self.PORT)) 
-        
         while True and not rospy.is_shutdown():
-            # send current pose to ally
-            send_data = []
-            send_data = self.robot_pose.copy()
-            send_data.append(self.start_running)
-            send_data = str(send_data)
-            print('send: ' + send_data)
-            s.send(send_data.encode())
+            socket_ = self.initConnection(self.HOST, self.PORT)
+            try:
+                while True and not rospy.is_shutdown():
+                    # send current pose to ally
+                    send_data = []
+                    send_data = self.robot_pose.copy()
+                    send_data.append(self.start_running)
+                    send_data = str(send_data)
+                    socket_.send(send_data.encode())
+                    rospy.loginfo_throttle(0.1, '[Pico] send: ' + send_data)
 
-            # receive ally's current pose
-            indata = s.recv(1024)
-            if len(indata) == 0: # connection closed
-                s.close()
-                print('server closed connection.')
-                break
-            recv_data = indata.decode()
-            print('recv: ' + recv_data)
-            recv_data = json.loads(recv_data)
-            self.allyPublish(recv_data)
-            print("---")
-            rospy.Rate(30).sleep()
+                    # receive ally's current pose
+                    indata = socket_.recv(1024)
+                    if len(indata) == 0: # connection closed
+                        socket_.close()
+                        print('server closed connection.')
+                        break
+                    recv_data = indata.decode()
+                    rospy.loginfo_throttle(0.1, '[Pico] recv: ' + recv_data)
+                    recv_data = json.loads(recv_data)
+                    self.allyPosePublish(recv_data)
+                    self.allyScorePublish(recv_data)
+
+                    rospy.loginfo_throttle(0.1, "---")
+                    rospy.Rate(30).sleep()
+
+            except socket.error:
+                rospy.logwarn("No connection from Server [ %s:%s ], Reconnecting ...", self.HOST, self.PORT)
+                rospy.sleep(0.5)
+                self.initConnection
+
+    def initConnection(self, host, port):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try :
+            sock.connect((host,port))
+        except :
+            pass
+        return sock
 
     def poseCallback(self, data):
         x = data.pose.pose.position.x
@@ -59,7 +74,7 @@ class tcp_client:
     def startCallback(self, data):
         self.start_running = data.data
 
-    def allyPublish(self, ally_pose):
+    def allyPosePublish(self, ally_pose):
         msg = PoseWithCovarianceStamped()
         msg.header.stamp = rospy.Time.now()
         msg.header.frame_id = 'map'
