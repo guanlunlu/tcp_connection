@@ -30,7 +30,7 @@ class tcp_server:
         self.score_sub = rospy.Subscriber("add_Point", Int32, self.scoreCallback)
         self.ally_pub = rospy.Publisher("pico_pose", PoseWithCovarianceStamped, queue_size=10)
 
-        self.obs_sub = rospy.Subscriber("obstacle_array", ObstacleArrayMsg, self.obsCallback)
+        self.obs_sub = rospy.Subscriber("obstacles_to_map", Obstacles, self.obsCallback)
         self.ally_obs_pub = rospy.Publisher("ally_obstacle_array", ObstacleArrayMsg, queue_size=10)
 
 
@@ -153,9 +153,9 @@ class tcp_server:
         msg.header.frame_id = "map"
         for i in self.ally_obstacle_list:
             cir_obs = CircleObstacle()
-            cir_obs.x = i[0]
-            cir_obs.y = i[1]
-            msg.obstacles.append(cir_obs)
+            cir_obs.center.x = i[0]
+            cir_obs.center.y = i[1]
+            msg.circles.append(cir_obs)
         self.ally_obs_pub.publish(msg)
         del self.ally_obstacle_list[:]
 

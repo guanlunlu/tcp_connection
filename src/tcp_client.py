@@ -152,9 +152,9 @@ class tcp_client:
         msg.header.frame_id = "map"
         for i in self.ally_obstacle_list:
             cir_obs = CircleObstacle()
-            cir_obs.x = i[0]
-            cir_obs.y = i[1]
-            msg.obstacles.append(cir_obs)
+            cir_obs.center.x = i[0]
+            cir_obs.center.y = i[1]
+            msg.circles.append(cir_obs)
         self.ally_obs_pub.publish(msg)
         del self.ally_obstacle_list[:]
         
