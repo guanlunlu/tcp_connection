@@ -13,6 +13,8 @@ class tcp_client:
     def __init__(self):
         self.HOST = '192.168.50.195'
         self.PORT = 7001
+        self.HOST = rospy.get_param("tcp_host", '192.168.50.195')
+        self.PORT = rospy.get_param("tcp_port", 7001)
 
         self.robot_pose = [0,0,0]
         self.start_running = 0
