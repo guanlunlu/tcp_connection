@@ -31,7 +31,7 @@ class tcp_server:
         self.ally_pub = rospy.Publisher("pico_pose", PoseWithCovarianceStamped, queue_size=10)
 
         self.obs_sub = rospy.Subscriber("obstacles_to_map", Obstacles, self.obsCallback)
-        self.ally_obs_pub = rospy.Publisher("ally_obstacle_array", ObstacleArrayMsg, queue_size=10)
+        self.ally_obs_pub = rospy.Publisher("ally_obstacle_to_map", Obstacles, queue_size=10)
 
 
         self.serverInitialize()
@@ -53,6 +53,9 @@ class tcp_server:
                 rospy.loginfo('connected by ' + str(addr))
                 self.stateReset()
             except KeyboardInterrupt:
+                pass
+            except socket.timeout:
+                rospy.logwarn("Timeout")
                 pass
 
             while True and not rospy.is_shutdown():
@@ -93,6 +96,7 @@ class tcp_server:
         rospy.loginfo_throttle(0.1,'[Tera] send: ' + send_data)
         rospy.loginfo_throttle(0.1,"---")
         msg = send_data.encode()
+        self.score = -1
         return msg
 
     def messageDecode(self, raw_data):
@@ -125,7 +129,6 @@ class tcp_server:
 
     def scoreCallback(self, data):
         self.score = data.data
-        self.score = -1
 
     def obsCallback(self, data):
         del self.obstacle_list[:]
@@ -155,6 +158,8 @@ class tcp_server:
             cir_obs = CircleObstacle()
             cir_obs.center.x = i[0]
             cir_obs.center.y = i[1]
+            cir_obs.radius = 0.05
+            cir_obs.true_radius = 0.05
             msg.circles.append(cir_obs)
         self.ally_obs_pub.publish(msg)
         del self.ally_obstacle_list[:]

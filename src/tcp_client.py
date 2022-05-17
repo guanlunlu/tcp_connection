@@ -154,6 +154,8 @@ class tcp_client:
             cir_obs = CircleObstacle()
             cir_obs.center.x = i[0]
             cir_obs.center.y = i[1]
+            cir_obs.radius = 0.05
+            cir_obs.true_radius = 0.05
             msg.circles.append(cir_obs)
         self.ally_obs_pub.publish(msg)
         del self.ally_obstacle_list[:]
