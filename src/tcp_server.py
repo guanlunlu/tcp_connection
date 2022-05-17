@@ -2,7 +2,7 @@
 
 import rospy
 import numpy as np
-import socket
+import socket, pickle
 import json
 
 from tf.transformations import euler_from_quaternion
@@ -17,8 +17,9 @@ class tcp_server:
     def __init__(self) -> None:
         self.HOST = '192.168.50.2'
         self.PORT = 7001
-        self.HOST = rospy.get_param("tcp_host", '192.168.50.2')
-        self.PORT = rospy.get_param("tcp_port", 7001)
+        self.HOST = rospy.get_param("~tcp_host", '192.168.50.195')
+        self.PORT = rospy.get_param("~tcp_port", 7001)
+        rospy.logwarn("[TCP SERVER] Parameters set, Host on %s:%s", self.HOST, self.PORT)
 
         self.robot_pose = [0,0,0]
         self.score = 0
@@ -92,17 +93,19 @@ class tcp_server:
             send_data.append(round(obs[0],4))
             send_data.append(round(obs[1],4))
 
-        send_data = str(send_data)
-        rospy.loginfo_throttle(0.1,'[Tera] send: ' + send_data)
+        # send_data = str(send_data)
+        # msg = send_data.encode()
+        rospy.loginfo_throttle(0.1,'[Tera] send: %s', send_data)
         rospy.loginfo_throttle(0.1,"---")
-        msg = send_data.encode()
+        msg = pickle.dumps(send_data)
         self.score = -1
         return msg
 
     def messageDecode(self, raw_data):
-        recv_data = raw_data.decode()
-        rospy.loginfo_throttle(0.1,'[Tera] recv: ' + recv_data)
-        recv_data = json.loads(recv_data)
+        # recv_data = raw_data.decode()
+        recv_data = pickle.loads(raw_data)
+        rospy.loginfo_throttle(0.1,'[Tera] recv: %s', recv_data)
+        # recv_data = json.loads(recv_data)
         if len(recv_data) != 0:
             self.allyPublish(recv_data)
             self.triggerAlly(recv_data)

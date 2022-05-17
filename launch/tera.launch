@@ -1,6 +1,6 @@
 <launch>
     <node name="tcp_server" pkg="tcp_connection" type="tcp_server.py" output="screen">
         <param name="tcp_host" type="string" value="192.168.50.2" />
-        <param name="tcp_host" type="int" value="7001" />
+        <param name="tcp_port" type="int" value="7001" />
     </node>
 </launch>

@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import rospy
-import socket
+import socket, pickle
 import json
 
 from tf.transformations import euler_from_quaternion
@@ -15,8 +15,9 @@ class tcp_client:
     def __init__(self):
         self.HOST = '192.168.50.2'
         self.PORT = 7001
-        self.HOST = rospy.get_param("tcp_host", '192.168.50.2')
-        self.PORT = rospy.get_param("tcp_port", 7001)
+        self.HOST = rospy.get_param("~tcp_host", '192.168.50.195')
+        self.PORT = rospy.get_param("~tcp_port", 7001)
+        rospy.logwarn("[TCP CLIENT] Parameters set, Host on %s:%s", self.HOST, self.PORT)
 
         self.robot_pose = [0,0,0]
         self.start_running = 0
@@ -25,7 +26,7 @@ class tcp_client:
         self.start_sub = rospy.Subscriber("start_running", Int32, self.startCallback)
 
         self.ally_pub = rospy.Publisher("tera_pose", PoseWithCovarianceStamped, queue_size=10)
-        self.score_pub = rospy.Publisher("add_Point", Int32, queue_size= 10)
+        self.score_pub = rospy.Publisher("tera_add_Point", Int32, queue_size= 10)
 
         self.obstacle_list = []
         self.ally_obstacle_list = []
@@ -63,12 +64,15 @@ class tcp_client:
 
                     # rospy.loginfo_throttle(0.1, "---")
                     self.messageDecode(indata)
-                    rospy.Rate(30).sleep()
+                    rospy.Rate(10).sleep()
 
             except socket.error:
                 rospy.logwarn("No connection from Server [ %s:%s ], Reconnecting ...", self.HOST, self.PORT)
                 rospy.sleep(0.5)
                 self.initConnection
+
+            except KeyboardInterrupt:
+                break
 
     def messageEncode(self):
         send_data = []
@@ -79,16 +83,18 @@ class tcp_client:
             send_data.append(round(obs[0],4))
             send_data.append(round(obs[1],4))
 
-        send_data = str(send_data)
-        rospy.loginfo_throttle(0.1,'[Pico] send: ' + send_data)
+        # send_data = str(send_data)
+        rospy.loginfo_throttle(0.1,'[Pico] send: %s', send_data)
         rospy.loginfo_throttle(0.1,"---")
-        msg = send_data.encode()
+        # msg = send_data.encode()
+        msg = pickle.dumps(send_data)
         return msg
 
     def messageDecode(self, raw_data):
-        recv_data = raw_data.decode()
-        rospy.loginfo_throttle(0.1,'[Pico] recv: ' + recv_data)
-        recv_data = json.loads(recv_data)
+        # recv_data = raw_data.decode()
+        recv_data = pickle.loads(raw_data)
+        rospy.loginfo_throttle(0.1,'[Pico] recv: %s', recv_data)
+        # recv_data = json.loads(recv_data)
         if len(recv_data) != 0:
             self.allyPosePublish(recv_data)
             self.allyScorePublish(recv_data)
@@ -162,6 +168,6 @@ class tcp_client:
         
 
 if __name__ == "__main__":
-    rospy.init_node("tcp_client", anonymous = True)
+    rospy.init_node("tcp_client", anonymous = True, disable_signals=True)
     tcp_client()
     rospy.spin()
